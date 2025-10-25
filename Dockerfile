@@ -1,37 +1,27 @@
-# ==============================
-# STAGE 1 — Build the Application
-# ==============================
+# Stage 1: build
 FROM maven:3.9.4-eclipse-temurin-21 AS builder
-
-# Set working directory inside container
 WORKDIR /app
 
-# Copy pom.xml and download dependencies (cache layer)
+# cache dependencies
 COPY pom.xml .
 RUN mvn dependency:go-offline -B
 
-# Copy entire project and build
+# copy sources and build
 COPY src ./src
-RUN mvn clean package -DskipTests
+RUN mvn -B clean package -DskipTests
 
-# ==============================
-# STAGE 2 — Create a Smaller Runtime Image
-# ==============================
+# Stage 2: runtime
 FROM eclipse-temurin:21-jre-alpine
-
-# Set working directory inside container
 WORKDIR /app
 
-# Copy JAR file from builder stage
+# copy jar from builder
 COPY --from=builder /app/target/*.jar app.jar
 
-# Expose application port (change if needed)
-EXPOSE 8081
+# allow Render to detect the port. We still expose 8080 for clarity
+EXPOSE 8080
 
-# Set environment variables
+# optional: default JVM flags; can override on Render if needed
+ENV JAVA_OPTS="-Xms256m -Xmx512m"
 
-ENV DB_URL="jdbc:postgresql://db.haekduygvdttnvgjzqyo.supabase.co:5432/postgres?sslmode=require"
-ENV DB_PASSWORD="X_Ae5@4@?%4aPy5"
-
-# Run the Spring Boot app
+# run
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
